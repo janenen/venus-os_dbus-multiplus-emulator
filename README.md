@@ -1,7 +1,8 @@
-## dbus-mutliplus-emulator - Emulates a MultiPlus II 48/5000/70-50
-
+## dbus-mutliplus-emulator - Emulates a MultiPlus II xx/xxxx/xx-xx
+Forked from
 <small>GitHub repository: [mr-manuel/venus-os_dbus-multiplus-emulator](https://github.com/mr-manuel/venus-os_dbus-multiplus-emulator)</small>
 
+<small>GitHub repository: [janenen/venus-os_dbus-multiplus-emulator](https://github.com/janenen/venus-os_dbus-multiplus-emulator)</small>
 ## Index
 
 1. [Disclaimer](#disclaimer)
@@ -21,7 +22,7 @@ I wrote this script for myself. I'm not responsible, if you damage something usi
 
 ## Supporting/Sponsoring this project
 
-You like the project and you want to support me?
+You like the project and you want to support mr-manuel?
 
 [<img src="https://github.md0.eu/uploads/donate-button.svg" height="50">](https://www.paypal.com/donate/?hosted_button_id=3NEVZBDM5KABW)
 
@@ -29,12 +30,14 @@ You like the project and you want to support me?
 ## Purpose
 The script emulates a MultiPlus II in Venus OS. This allows to show the correct values in the overview.
 
+## Prerequisites
+This fork tries to get a dumb charger and a dumb inverter, combined with two Shelly 1PM and one SmartShunt to behave.
+* Only single phase is mentioned.
+* There is no direct AC connection between input and output.
+* The Shellys which measure the input and output power might not be online all the time.
+
 ## Config
-There is nothing specific to configure and it should work out of the box for systems that have only `L1`. If you have multiple phases, grid meters and/or batteries, then a configuration is maybe needed. In this case edit the `dbus-multiplus-emulator.py` and search for the `USER CHANGABLE VALUES | START` section.
-
-In a multi-phase system, the DC loads are distributed based on the combined power from each phase of the grid and PV inverters. To achieve more accurate readings, you need to provide the power going in and out of the charger/inverter on the AC side. You can then use the [`dbus-mqtt-grid`](https://github.com/mr-manuel/venus-os_dbus-mqtt-grid) driver and configure it as an AC load to input these values into the emulator.
-
-⚠️ Please note that the `AC Loads` value may not exactly match the actual values, because losses are included as part of the load.
+TBD
 
 
 ## Install / Update
@@ -44,7 +47,7 @@ In a multi-phase system, the DC loads are distributed based on the combined powe
 2. Execute this commands to download and copy the files:
 
     ```bash
-    wget -O /tmp/download_dbus-multiplus-emulator.sh https://raw.githubusercontent.com/mr-manuel/venus-os_dbus-multiplus-emulator/master/download.sh
+    wget -O /tmp/download_dbus-multiplus-emulator.sh https://raw.githubusercontent.com/janenen/venus-os_dbus-multiplus-emulator/master/download.sh
 
     bash /tmp/download_dbus-multiplus-emulator.sh
     ```
@@ -56,7 +59,7 @@ In a multi-phase system, the DC loads are distributed based on the combined powe
 4. Edit the config file if you have a multi-phase system or if you want to have a custom configuration:
 
     ```bash
-    nano /data/etc/dbus-multiplus-emulator-2/config.ini
+    nano /data/etc/dbus-multiplus-emulator/config.ini
     ```
 
     Otherwise, skip this step.
@@ -89,4 +92,4 @@ If the script stops with the message `dbus.exceptions.NameExistsException: Bus n
 
 ## Compatibility
 
-This software supports the latest three stable versions of Venus OS. It may also work on older versions, but this is not guaranteed.
+This software is completly untested and has not even run once.

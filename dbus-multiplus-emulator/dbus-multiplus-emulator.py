@@ -65,6 +65,7 @@ phase_used = config["DEFAULT"]["phase_used"].replace(" ", "").split(",")
 inverter_max_power = int(config["DEFAULT"]["inverter_max_power"])
 dbus_service_name_grid = config["DEFAULT"]["dbus_service_name_grid"]
 dbus_service_name_ac_load = config["DEFAULT"]["dbus_service_name_ac_load"]
+dbus_service_name_dc_load = config["DEFAULT"]["dbus_service_name_dc_load"]
 grid_frequency = int(config["DEFAULT"]["grid_frequency"])
 grid_nominal_voltage = int(config["DEFAULT"]["grid_nominal_voltage"])
 
@@ -163,6 +164,7 @@ class DbusMultiPlusEmulator:
         self.system_items = {}
         self.grid_items = {}
         self.ac_load_items = {}
+        self.dc_load_items = {}
 
         logging.info("-- Initializing completed, starting the main loop")
 
@@ -190,9 +192,11 @@ class DbusMultiPlusEmulator:
         #     logging.info("Time to setup external dbus items: %s seconds" % (time() - start))
 
         # get DC values
-        dc_power = self.zeroIfNone(self.system_items["/Dc/Battery/Power"].get_value())
-        dc_voltage = self.zeroIfNone(self.system_items["/Dc/Battery/Voltage"].get_value())
-        dc_current = self.zeroIfNone(self.system_items["/Dc/Battery/Current"].get_value())
+
+        dc_voltage = self.zeroIfNone(self.dc_load_items["/Dc/0/Voltage"].get_value())
+        dc_current = self.zeroIfNone(self.dc_load_items["/Dc/0/Current"].get_value())
+        dc_temperature = self.zeroIfNone(self.dc_load_items["/Dc/0/Temperature"].get_value())
+        dc_power = dc_voltage * dc_current
 
         # # # calculate watthours
         # measure power and calculate watthours, since it provides only watthours for production/import/consumption and no export
@@ -494,7 +498,7 @@ class DbusMultiPlusEmulator:
         self._dbusservice["/Dc/0/Current"] = dc_current
         # self._dbusservice["/Dc/0/MaxChargeCurrent"] = self.system_items["/Info/MaxChargeCurrent"]
         self._dbusservice["/Dc/0/Power"] = dc_power
-        self._dbusservice["/Dc/0/Temperature"] = self.system_items["/Dc/Battery/Temperature"].get_value()
+        self._dbusservice["/Dc/0/Temperature"] = dc_temperature
         self._dbusservice["/Dc/0/Voltage"] = dc_voltage
 
         self._dbusservice["/Devices/0/UpTime"] = int(time()) - time_driver_started
@@ -983,6 +987,27 @@ def setup_dbus_external_items():
         dbus_objects_ac_load["/Ac/Current"] = VeDbusItemImport(dbus_connection, dbus_service_name_ac_load, "/Ac/Current")
         dbus_objects_ac_load["/Ac/Voltage"] = VeDbusItemImport(dbus_connection, dbus_service_name_ac_load, "/Ac/Voltage")
 
+    # ----- DC LOAD -----
+    is_present_in_vebus = False
+
+    # check if the dbus service is available
+    if dbus_service_name_dc_load != "":
+        logging.info(f"Fetched dbus_service_name_dc_load from config: {dbus_service_name_dc_load}")
+        is_present_in_vebus = dbus_service_name_dc_load in dbus_services
+    # search for the first com.victronenergy.acload service
+    else:
+        # ToDo: Use BMS values instead
+        pass
+
+    # dictionary containing the different items
+    dbus_objects_dc_load = {}
+
+    if is_present_in_vebus:
+        logging.info(f"{dbus_service_name_dc_load} is present in dbus, setting up the dc load values")
+        dbus_objects_dc_load["/Dc/0/Voltage"] = VeDbusItemImport(dbus_connection, dbus_service_name_dc_load, "/Dc/0/Voltage")
+        dbus_objects_dc_load["/Dc/0/Current"] = VeDbusItemImport(dbus_connection, dbus_service_name_dc_load, "/Dc/0/Current")
+        dbus_objects_dc_load["/Dc/0/Temperature"] = VeDbusItemImport(dbus_connection, dbus_service_name_dc_load, "/Dc/0/Temperature")
+
     logging.info("*** Found values ***")
 
     if dbus_service_system != "":
@@ -1015,7 +1040,17 @@ def setup_dbus_external_items():
                 dbus_objects_ac_load[item] = None
                 logging.debug(f"{item} does not exist, removed from ac_load values")
 
-    return dbus_objects_system, dbus_objects_grid, dbus_objects_ac_load
+    if dbus_service_name_dc_load != "":
+        logging.info(f"Dbus dc load service name: {dbus_service_name_dc_load}")
+        for item in dbus_objects_dc_load:
+            # remove items that does not exist
+            if dbus_objects_dc_load[item].exists:
+                logging.info(f"{item} = {dbus_objects_dc_load[item].get_value()}")
+            else:
+                dbus_objects_dc_load[item] = None
+                logging.debug(f"{item} does not exist, removed from dc_load values")
+
+    return dbus_objects_system, dbus_objects_grid, dbus_objects_ac_load, dbus_objects_dc_load
 
 
 # formatting
@@ -1415,7 +1450,7 @@ def main():
     time_driver_started = int(time())
 
     # has to be called before DbusMultiPlusEmulator() else it does not work
-    system_items, grid_items, ac_load_items = setup_dbus_external_items()
+    system_items, grid_items, ac_load_items, dc_load_items = setup_dbus_external_items()
 
     dbus_multiplus_emulator = DbusMultiPlusEmulator(
         servicename="com.victronenergy.vebus.ttyS3",
@@ -1426,6 +1461,7 @@ def main():
     dbus_multiplus_emulator.system_items = system_items
     dbus_multiplus_emulator.grid_items = grid_items
     dbus_multiplus_emulator.ac_load_items = ac_load_items
+    dbus_multiplus_emulator.dc_load_items = dc_load_items
 
     logging.info("Connected to dbus and switching over to GLib.MainLoop() (= event based)")
     mainloop = GLib.MainLoop()
